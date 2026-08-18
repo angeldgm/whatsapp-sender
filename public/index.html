@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>WhatsApp Sender</title>
+
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #d1d5db;
+            --green: #16a34a;
+            --green-dark: #15803d;
+            --red: #dc2626;
+            --blue: #2563eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family:
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #9ca3af;
+            border-radius: 12px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--blue);
+            background: rgba(37, 99, 235, 0.06);
+        }
+
+        .drop-zone strong {
+            display: block;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .drop-zone span {
+            color: var(--muted);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            margin-top: 6px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--card);
+            color: var(--text);
+        }
+
+        button {
+            border: 0;
+            border-radius: 7px;
+            padding: 10px 16px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        textarea {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 15px;
+        }
+
+        .primary {
+            background: var(--green);
+            color: white;
+        }
+
+        .primary:hover:not(:disabled) {
+            background: var(--green-dark);
+        }
+
+        .secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .danger {
+            background: var(--red);
+            color: white;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            border-radius: 20px;
+            background: #e5e7eb;
+            font-size: 14px;
+        }
+
+        .status.ready {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.qr {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .table-container {
+            overflow: auto;
+            max-height: 550px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th,
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            z-index: 1;
+        }
+
+        tr.selected {
+            background: rgba(34, 197, 94, 0.08);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #progress {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--green);
+            transition: width 0.2s;
+        }
+
+        #log {
+            max-height: 250px;
+            overflow: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 7px;
+        }
+
+        .warning {
+            padding: 12px;
+            border-radius: 8px;
+            background: #fef3c7;
+            color: #78350f;
+            margin-bottom: 15px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #111827;
+                --card: #1f2937;
+                --text: #f9fafb;
+                --muted: #9ca3af;
+                --border: #374151;
+            }
+
+            .secondary {
+                background: #374151;
+                color: white;
+            }
+
+            .status {
+                background: #374151;
+            }
+
+            .progress-bar {
+                background: #374151;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>WhatsApp Sender</h1>
+
+    <div class="card">
+        <strong>WhatsApp status:</strong>
+        <span id="status" class="status">
+            Starting...
+        </span>
+    </div>
+
+    <div id="qrCard" class="card hidden">
+        <h2>Connect WhatsApp</h2>
+
+        <p>
+            Open WhatsApp on your phone and scan this QR code:
+        </p>
+
+        <img
+            id="qrImage"
+            alt="WhatsApp QR code"
+            width="300"
+            height="300"
+        >
+
+        <p id="qrStatus">
+            Waiting for QR code...
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="warning">
+            Note that sending unsolicited bulk messages can
+            violate WhatsApp rules and may result in a temporal
+            restriction for using WhatsApp Web or sending messages to new contacts.
+        </div>
+
+        <div
+            id="dropZone"
+            class="drop-zone"
+        >
+            <strong>Drop your file here</strong>
+            <span>
+                or click to select an XLSX, XLS, CSV or TXT file
+            </span>
+
+            <input
+                id="fileInput"
+                type="file"
+                accept=".xlsx,.xls,.csv,.txt"
+            >
+        </div>
+
+        <p id="fileName"></p>
+    </div>
+
+    <div id="messageCard" class="card">
+
+        <h2>Message</h2>
+
+        <p>
+            Write your message below. Use
+            <strong>{Column Name}</strong>
+            to insert a value from your file.
+        </p>
+
+        <div class="toolbar">
+            <select
+                id="insertColumnSelect"
+                style="max-width: 250px;"
+            >
+                <option value="">
+                    Select column...
+                </option>
+            </select>
+
+            <button
+                id="insertColumnButton"
+                class="secondary"
+                type="button"
+            >
+                Insert column
+            </button>
+
+            <span class="spacer"></span>
+
+            <button
+                id="saveMessage"
+                class="secondary"
+                type="button"
+            >
+                Save message
+            </button>
+
+            <button
+                id="loadMessage"
+                class="secondary"
+                type="button"
+            >
+                Load message
+            </button>
+
+            <input
+                id="messageFile"
+                type="file"
+                accept=".txt"
+                style="display: none;"
+            >
+        </div>
+
+        <textarea
+            id="messageTemplate"
+            rows="8"
+            placeholder="Hello {Name},
+
+    Your order {Order ID} is ready.
+
+    Thank you!"
+            style="
+                width: 100%;
+                resize: vertical;
+                text-align: start;
+            "
+        ></textarea>
+
+        <div
+            id="messagePreview"
+            style="
+                margin-top: 15px;
+                padding: 15px;
+                border-radius: 8px;
+                background: rgba(128,128,128,0.1);
+                white-space: pre-wrap;
+            "
+        >
+            Message preview will appear here.
+        </div>
+
+    </div>
+
+
+    <div
+        id="mappingCard"
+        class="card hidden"
+    >
+        <h2>Column mapping</h2>
+
+        <div class="controls">
+
+            <label>
+                Prefix to be added (prepended) to all phone numbers
+                <textarea id="phonePrefix" value=""></textarea>
+            </label>
+
+            <label>
+                Phone number column *
+                <select id="phoneColumn">
+                    <option value="">Select column...</option>
+                </select>
+            </label>
+
+        </div>
+
+        <p>
+            Phone numbers should be in international format (for example, 34612345678). You can optionally add a prefix (such as 34) above, which will be omitted for rows that have it already.
+        </p>
+    </div>
+
+    <div
+        id="rowsCard"
+        class="card hidden"
+    >
+        <div class="toolbar">
+
+            <strong>
+                <span id="rowCount">0</span> rows
+            </strong>
+
+            <span class="spacer"></span>
+
+            <button
+                id="selectAll"
+                class="secondary"
+            >
+                Select all
+            </button>
+
+            <button
+                id="selectNone"
+                class="secondary"
+            >
+                Select none
+            </button>
+
+            <button
+                id="sendButton"
+                class="primary"
+                disabled
+            >
+                Send selected
+            </button>
+
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="progress" class="hidden">
+
+            <p>
+                Sending:
+                <strong id="progressText">0 / 0</strong>
+            </p>
+
+            <div class="progress-bar">
+                <div
+                    id="progressFill"
+                    class="progress-fill"
+                ></div>
+            </div>
+
+        </div>
+    </div>
+
+    <div
+        id="logCard"
+        class="card hidden"
+    >
+        <h2>Log</h2>
+        <div id="log"></div>
+    </div>
+
+</div>
+
+<script>
+    const qrCard =
+        document.getElementById('qrCard');
+
+    const qrImage =
+        document.getElementById('qrImage');
+
+    const qrStatus =
+        document.getElementById('qrStatus');
+
+    async function updateQrCode() {
+        try {
+            const response =
+                await fetch('/api/qr');
+
+            const data =
+                await response.json();
+
+            if (data.state === 'qr' && data.qr) {
+                qrCard.classList.remove('hidden');
+
+                qrImage.src = data.qr;
+
+                qrStatus.textContent =
+                    'Scan the QR code with WhatsApp.';
+            } else {
+                qrCard.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error(
+                'Failed to retrieve QR code:',
+                error
+            );
+        }
+    }
+
+    updateQrCode();
+
+    setInterval(updateQrCode, 1000);
+
+    const state = {
+        headers: [],
+        rows: [],
+        selected: new Set()
+    };
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    const mappingCard =
+        document.getElementById('mappingCard');
+
+    const rowsCard =
+        document.getElementById('rowsCard');
+
+    const logCard =
+        document.getElementById('logCard');
+
+    const statusElement =
+        document.getElementById('status');
+
+    const phoneColumn =
+        document.getElementById('phoneColumn');
+
+    const tableHead =
+        document.getElementById('tableHead');
+
+    const tableBody =
+        document.getElementById('tableBody');
+
+    const sendButton =
+        document.getElementById('sendButton');
+
+    const logElement =
+        document.getElementById('log');
+
+    const progress =
+        document.getElementById('progress');
+
+    const progressText =
+        document.getElementById('progressText');
+
+    const progressFill =
+        document.getElementById('progressFill');
+
+    const phonePrefix =
+        document.getElementById('phonePrefix');
+
+    const messageCard =
+        document.getElementById('messageCard');
+
+    const messageTemplate =
+        document.getElementById('messageTemplate');
+
+    const insertColumnSelect =
+        document.getElementById('insertColumnSelect');
+
+    const messagePreview =
+        document.getElementById('messagePreview');
+
+    const messageFile =
+        document.getElementById('messageFile');
+
+
+    /*
+     * ------------------------------------------------------
+     * WhatsApp status
+     * ------------------------------------------------------
+     */
+
+    async function updateStatus() {
+        try {
+            const response =
+                await fetch('/api/status');
+
+            const data =
+                await response.json();
+
+            const stateName = data.state;
+
+            statusElement.textContent =
+                stateName;
+
+            statusElement.className =
+                'status';
+
+            if (stateName === 'ready') {
+                statusElement.classList.add('ready');
+            }
+
+            if (
+                stateName === 'qr' ||
+                stateName === 'starting' ||
+                stateName === 'authenticated'
+            ) {
+                statusElement.classList.add('qr');
+            }
+
+            if (
+                stateName === 'auth_failure' ||
+                stateName === 'disconnected'
+            ) {
+                statusElement.classList.add('error');
+            }
+
+            updateSendButton();
+        } catch (error) {
+            statusElement.textContent =
+                'Server unavailable. Run start_windows.bat or start_linux_or_macos.sh to restart it. In case you have removed connected device from phone, delete .wwebjs_auth folder to connect again.';
+
+            statusElement.className =
+                'status error';
+        }
+    }
+
+    updateStatus();
+
+    setInterval(updateStatus, 2000);
+
+    /*
+     * ------------------------------------------------------
+     * File selection
+     * ------------------------------------------------------
+     */
+
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            loadFile(fileInput.files[0]);
+        }
+    });
+
+    dropZone.addEventListener(
+        'dragover',
+        event => {
+            event.preventDefault();
+            dropZone.classList.add('dragover');
+        }
+    );
+
+    dropZone.addEventListener(
+        'dragleave',
+        () => {
+            dropZone.classList.remove('dragover');
+        }
+    );
+
+    dropZone.addEventListener(
+        'drop',
+        event => {
+            event.preventDefault();
+
+            dropZone.classList.remove('dragover');
+
+            const files = event.dataTransfer.files;
+
+            if (files.length) {
+                loadFile(files[0]);
+            }
+        }
+    );
+
+    async function loadFile(file) {
+        try {
+            document.getElementById('fileName')
+                .textContent =
+                `Loading ${file.name}...`;
+
+            const formData = new FormData();
+
+            formData.append('file', file);
+
+            const response = await fetch(
+                '/api/parse',
+                {
+                    method: 'POST',
+                    body: formData
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || 'Failed to parse file.'
+                );
+            }
+
+            state.headers = data.headers;
+            state.rows = data.rows;
+            state.selected = new Set();
+
+            document.getElementById('fileName')
+                .textContent =
+                `${data.filename} — ${data.rows.length} rows`;
+
+            populateColumnSelectors();
+            renderTable();
+
+            mappingCard.classList.remove('hidden');
+            rowsCard.classList.remove('hidden');
+            logCard.classList.remove('hidden');
+
+            log(
+                `Loaded ${data.rows.length} rows and ` +
+                `${data.headers.length} columns.`
+            );
+
+            saveFilePath(file);
+
+            updateSendButton();
+        } catch (error) {
+            alert(error.message);
+            log(`ERROR: ${error.message}`);
+        }
+    }
+
+    function saveFilePath(path) {
+        fetch('/api/savePath', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: path })
+        });
+    }
+
+    // async function getLastFilePathAndLoad() {
+    //     const response = await fetch('api/path');
+    //     const data = await response.json();
+    //     console.log(`${data.pa}`);
+    //     if (data.path) {
+    //         loadFile({ name: data.path.slice(data.path.lastIndexOf('/') + 1), path: data.path });
+    //     }
+    // }
+
+    // getLastFilePathAndLoad()
+
+    /*
+     * ------------------------------------------------------
+     * Column selectors
+     * ------------------------------------------------------
+     */
+
+    function populateColumnSelectors() {
+        const selectors = [
+            phoneColumn
+        ];
+
+        // Populate the normal column selectors
+        for (const selector of selectors) {
+            selector.innerHTML = '';
+
+            const noneOption =
+                document.createElement('option');
+
+            noneOption.value = '';
+
+            noneOption.textContent =
+                selector === phoneColumn
+                    ? 'Select column...'
+                    : 'None';
+
+            selector.appendChild(noneOption);
+
+            for (const header of state.headers) {
+                const option =
+                    document.createElement('option');
+
+                option.value = header;
+                option.textContent = header;
+
+                selector.appendChild(option);
+            }
+        }
+
+        // Populate the template "Insert column" selector
+        insertColumnSelect.innerHTML = '';
+
+        const defaultOption =
+            document.createElement('option');
+
+        defaultOption.value = '';
+        defaultOption.textContent =
+            'Select column...';
+
+        insertColumnSelect.appendChild(defaultOption);
+
+        for (const header of state.headers) {
+            const option =
+                document.createElement('option');
+
+            option.value = header;
+            option.textContent = header;
+
+            insertColumnSelect.appendChild(option);
+        }
+
+        /*
+         * Try to automatically detect common column names.
+         */
+
+        const findColumn = (names) => {
+            return state.headers.find(header => {
+                const normalized =
+                    header
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, '');
+
+                return names.includes(normalized);
+            }) || '';
+        };
+
+        phoneColumn.value = findColumn([
+            'phone',
+            'phonenumber',
+            'mobile',
+            'mobilenumber',
+            'telephone',
+            'tel',
+            'telefono',
+            'whatsapp'
+        ]);
+
+        updateSendButton();
+    }
+
+    /*
+     * ------------------------------------------------------
+     * Table
+     * ------------------------------------------------------
+     */
+
+    function renderTable() {
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        const headerRow =
+            document.createElement('tr');
+
+        const selectHeader =
+            document.createElement('th');
+
+        selectHeader.textContent = 'Send';
+
+        headerRow.appendChild(selectHeader);
+
+        const indexHeader =
+            document.createElement('th');
+
+        indexHeader.textContent = '#';
+
+        headerRow.appendChild(indexHeader);
+
+        for (const header of state.headers) {
+            const th =
+                document.createElement('th');
+
+            th.textContent = header;
+
+            headerRow.appendChild(th);
+        }
+
+        const messageHeader = document.createElement('th');
+
+        messageHeader.textContent = 'Message preview';
+
+        headerRow.appendChild(messageHeader);
+
+        tableHead.appendChild(headerRow);
+
+        state.rows.forEach((row, index) => {
+            const tr =
+                document.createElement('tr');
+
+            if (state.selected.has(index)) {
+                tr.classList.add('selected');
+            }
+
+            const selectCell =
+                document.createElement('td');
+
+            const checkbox =
+                document.createElement('input');
+
+            checkbox.type = 'checkbox';
+
+            checkbox.checked =
+                state.selected.has(index);
+
+            checkbox.addEventListener(
+                'change',
+                () => {
+                    if (checkbox.checked) {
+                        state.selected.add(index);
+                        tr.classList.add('selected');
+                    } else {
+                        state.selected.delete(index);
+                        tr.classList.remove('selected');
+                    }
+
+                    updateMessagePreview();
+                    updateSendButton();
+                }
+            );
+
+            selectCell.appendChild(checkbox);
+            tr.appendChild(selectCell);
+
+            const indexCell =
+                document.createElement('td');
+
+            indexCell.textContent =
+                String(index + 1);
+
+            tr.appendChild(indexCell);
+
+            for (const header of state.headers) {
+                const td =
+                    document.createElement('td');
+
+                td.textContent =
+                    row[header] ?? '';
+
+                tr.appendChild(td);
+            }
+
+            const messageCell = document.createElement('td');
+
+            messageCell.textContent = renderBrowserMessage(
+                messageTemplate.value,
+                row
+            );
+
+            messageCell.style.whiteSpace = 'pre-wrap';
+            messageCell.style.minWidth = '300px';
+            messageCell.style.maxWidth = '500px';
+
+            tr.appendChild(messageCell);
+
+
+            tableBody.appendChild(tr);
+        });
+
+        document.getElementById('rowCount')
+            .textContent =
+            state.rows.length;
+    }
+
+    /*
+     * ------------------------------------------------------
+     * Select all / none
+     * ------------------------------------------------------
+     */
+
+    document.getElementById('selectAll')
+        .addEventListener('click', () => {
+            state.selected =
+                new Set(
+                    state.rows.map((_, index) => index)
+                );
+
+            renderTable();
+            updateSendButton();
+        });
+
+    document.getElementById('selectNone')
+        .addEventListener('click', () => {
+            state.selected.clear();
+
+            renderTable();
+            updateSendButton();
+        });
+
+    /*
+     * ------------------------------------------------------
+     * Mapping changes
+     * ------------------------------------------------------
+     */
+
+    phoneColumn.addEventListener(
+        'change',
+        updateSendButton
+    );
+
+    function updateSendButton() {
+        const whatsappReady =
+            statusElement.textContent === 'ready';
+
+        const hasPhoneColumn =
+            Boolean(phoneColumn.value);
+
+        const hasRows =
+            state.selected.size > 0;
+
+        sendButton.disabled =
+            !whatsappReady ||
+            !hasPhoneColumn ||
+            !hasRows;
+    }
+
+    /*
+     * ------------------------------------------------------
+     * Template for message
+     * ------------------------------------------------------
+     */
+
+    function populateMessageColumns() {
+        insertColumnSelect.innerHTML = '';
+
+        const defaultOption =
+            document.createElement('option');
+
+        defaultOption.value = '';
+        defaultOption.textContent =
+            'Select column...';
+
+        insertColumnSelect.appendChild(
+            defaultOption
+        );
+
+        for (const header of state.headers) {
+            const option =
+                document.createElement('option');
+
+            option.value = header;
+            option.textContent = header;
+
+            insertColumnSelect.appendChild(option);
+        }
+    }
+
+    populateMessageColumns();
+
+    document
+        .getElementById('insertColumnButton')
+        .addEventListener('click', () => {
+
+            const column =
+                insertColumnSelect.value;
+
+            if (!column) {
+                return;
+            }
+
+            const token = `{${column}}`;
+
+            const start =
+                messageTemplate.selectionStart;
+
+            const end =
+                messageTemplate.selectionEnd;
+
+            const current =
+                messageTemplate.value;
+
+            messageTemplate.value =
+                current.substring(0, start) +
+                token +
+                current.substring(end);
+
+            const newPosition =
+                start + token.length;
+
+            messageTemplate.focus();
+
+            messageTemplate.setSelectionRange(
+                newPosition,
+                newPosition
+            );
+            
+            updateMessagePreview();
+            renderTable();
+        });
+
+        function renderBrowserMessage(
+            template,
+            row
+        ) {
+            return template.replace(
+                /\{([^{}]+)\}/g,
+                (match, columnName) => {
+                    const value =
+                        row[columnName];
+
+                    return value === undefined ||
+                        value === null
+                        ? ''
+                        : String(value);
+                }
+            );
+        }
+
+        function updateMessagePreview() {
+            const template =
+                messageTemplate.value;
+
+            if (!template) {
+                messagePreview.textContent =
+                    'Message preview will appear here.';
+
+                return;
+            }
+
+            /*
+             * Show the first selected row,
+             * otherwise the first row.
+             */
+            const index =
+                state.selected.size > 0
+                    ? Array.from(state.selected)[0]
+                    : 0;
+
+            const row =
+                state.rows[index];
+
+            if (!row) {
+                messagePreview.textContent =
+                    template;
+
+                return;
+            }
+
+            messagePreview.textContent =
+                renderBrowserMessage(
+                    template,
+                    row
+                );
+        }
+
+        messageTemplate.addEventListener(
+            'input',
+            () => {
+                updateMessagePreview();
+                renderTable();
+            }
+        );
+
+    document
+        .getElementById('saveMessage')
+        .addEventListener('click', () => {
+
+            const text =
+                messageTemplate.value;
+
+            const blob =
+                new Blob(
+                    [text],
+                    { type: 'text/plain;charset=utf-8' }
+                );
+
+            const url =
+                URL.createObjectURL(blob);
+
+            const link =
+                document.createElement('a');
+
+            link.href = url;
+            link.download = 'whatsapp-message.txt';
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            link.remove();
+
+            URL.revokeObjectURL(url);
+        });
+
+    document
+        .getElementById('loadMessage')
+        .addEventListener('click', () => {
+            messageFile.click();
+        });
+
+    messageFile.addEventListener(
+        'change',
+        async () => {
+
+            const file =
+                messageFile.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            try {
+                messageTemplate.value =
+                    await file.text();
+
+                updateMessagePreview();
+
+                log(
+                    `Loaded message template: ${file.name}`
+                );
+            } catch (error) {
+                alert(
+                    `Could not load message: ${error.message}`
+                );
+            }
+
+            messageFile.value = '';
+        }
+    );
+
+
+
+    /*
+     * ------------------------------------------------------
+     * Sending
+     * ------------------------------------------------------
+     */
+
+    sendButton.addEventListener(
+        'click',
+        async () => {
+            if (!phoneColumn.value) {
+                alert(
+                    'Please select the phone-number column.'
+                );
+
+                return;
+            }
+
+            if (state.selected.size === 0) {
+                alert(
+                    'Please select at least one row.'
+                );
+
+                return;
+            }
+
+            const confirmed =
+                confirm(
+                    `Send WhatsApp messages to ` +
+                    `${state.selected.size} selected rows?`
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
+            sendButton.disabled = true;
+
+            progress.classList.remove('hidden');
+
+            progressText.textContent =
+                `Sending ${state.selected.size} rows...`;
+
+            progressFill.style.width = '0%';
+
+            log(
+                `Starting send operation for ` +
+                `${state.selected.size} rows...`
+            );
+
+            try {
+                const response =
+                    await fetch('/api/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+                        body: JSON.stringify({
+                            rows: state.rows,
+
+                            phoneColumn:
+                                phoneColumn.value,
+
+                            phonePrefix:
+                                phonePrefix.value,
+
+                            messageTemplate:
+                                messageTemplate.value,
+
+                            selectedIndexes:
+                                Array.from(state.selected)
+                        })
+
+                    });
+
+                if (!response.ok) {
+                    let errorMessage =
+                        'Sending failed.';
+
+                    try {
+                        const data =
+                            await response.json();
+
+                        errorMessage =
+                            data.error ||
+                            errorMessage;
+                    } catch {
+                        // Ignore JSON parsing error.
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                /*
+                 * The server returns an XLSX file.
+                 */
+                const blob =
+                    await response.blob();
+
+                const url =
+                    URL.createObjectURL(blob);
+
+                const link =
+                    document.createElement('a');
+
+                link.href = url;
+                link.download =
+                    'whatsapp_results.xlsx';
+
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                URL.revokeObjectURL(url);
+
+                progressText.textContent =
+                    'Finished';
+
+                progressFill.style.width =
+                    '100%';
+
+                log(
+                    'Finished. The results file was downloaded.'
+                );
+
+                alert(
+                    'Finished. Your results file has been downloaded.'
+                );
+            } catch (error) {
+                log(`ERROR: ${error.message}`);
+                alert(error.message);
+            } finally {
+                updateSendButton();
+            }
+        }
+    );
+
+    /*
+     * ------------------------------------------------------
+     * Logging
+     * ------------------------------------------------------
+     */
+
+    function log(message) {
+        const timestamp =
+            new Date().toLocaleTimeString();
+
+        logElement.textContent +=
+            `[${timestamp}] ${message}\n`;
+
+        logElement.scrollTop =
+            logElement.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
