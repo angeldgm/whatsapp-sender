@@ -72,7 +72,7 @@ client.on('disconnected', (reason) => {
 
 client.on('message_ack', (msg, ack) => {
     if (ack >= MessageAck.ACK_SERVER) {
-        ack_messages.push(msg);
+        ack_messages.add(msg.id._serialized);
     }
 });
 
@@ -527,7 +527,8 @@ app.post('/api/send', async (req, res) => {
 
     const outputRows = rows.map(row => ({
         ...row,
-        finalMessage: ""
+        finalMessage: "",
+        // wasSent: "",
     }));
 
     const results = [];
@@ -612,35 +613,34 @@ app.post('/api/send', async (req, res) => {
                 /*
                  * Check for ACK_SERVER.
                  */
-                let attempts = 0;
-                let acknowledged = false;
+                // let attempts = 0;
+                // let acknowledged = false;
 
-                const interval = setInterval(() => {
-                    attempts++;
+                // for (let i = 0; i < 10; i++) {
+                //     if (sentMessage && ack_messages.has(sentMessage.id._serialized)) {
+                //         acknowledged = true;
+                //         break;
+                //     }
 
-                    acknowledged = ack_messages.includes(sentMessage);
+                //     await new Promise(resolve => setTimeout(resolve, 1000));
+                // }
 
-                    if (acknowledged || attempts >= 10) {
-                        clearInterval(interval);
-                    }
-                }, 1000);
+                // if (acknowledged) {
+                //     outputRows[index].wasSent = "1";
 
-                if (acknowledged) {
-                    outputRows[index].wasSent = 1;
+                //     results.push({
+                //         index,
+                //         status: 'sent'
+                //     });
+                // } else {
+                //     outputRows[index].wasSent = "0";
 
-                    results.push({
-                        index,
-                        status: 'sent'
-                    });
-                } else {
-                    outputRows[index].wasSent = 0;
-
-                    results.push({
-                        index,
-                        status: 'failed',
-                        error: 'No ACK_SERVER received'
-                    });
-                }
+                //     results.push({
+                //         index,
+                //         status: 'failed',
+                //         error: 'No ACK_SERVER received'
+                //     });
+                // }
 
                 /*
                  * Keep a delay between messages.
@@ -663,31 +663,31 @@ app.post('/api/send', async (req, res) => {
         /*
          * Create XLSX output.
          */
-        const worksheet = XLSX.utils.json_to_sheet(outputRows);
-        const workbook = XLSX.utils.book_new();
+        // const worksheet = XLSX.utils.json_to_sheet(outputRows);
+        // const workbook = XLSX.utils.book_new();
 
-        XLSX.utils.book_append_sheet(
-            workbook,
-            worksheet,
-            'Results'
-        );
+        // XLSX.utils.book_append_sheet(
+        //     workbook,
+        //     worksheet,
+        //     'Results'
+        // );
 
-        const outputBuffer = XLSX.write(workbook, {
-            type: 'buffer',
-            bookType: 'xlsx'
-        });
+        // const outputBuffer = XLSX.write(workbook, {
+        //     type: 'buffer',
+        //     bookType: 'xlsx'
+        // });
 
-        res.setHeader(
-            'Content-Type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
+        // res.setHeader(
+        //     'Content-Type',
+        //     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        // );
 
-        res.setHeader(
-            'Content-Disposition',
-            'attachment; filename="whatsapp_results.xlsx"'
-        );
+        // res.setHeader(
+        //     'Content-Disposition',
+        //     'attachment; filename="whatsapp_results.xlsx"'
+        // );
 
-        res.send(outputBuffer);
+        // res.send(outputBuffer);
     } catch (error) {
         console.error('Sending error:', error);
 
