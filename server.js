@@ -25,7 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let whatsappState = 'starting';
 let whatsappQr = null;
-let ack_messages = [];
+// let ack_messages = [];
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -70,11 +70,11 @@ client.on('disconnected', (reason) => {
     console.log('WhatsApp disconnected:', reason);
 });
 
-client.on('message_ack', (msg, ack) => {
-    if (ack >= MessageAck.ACK_SERVER) {
-        ack_messages.add(msg.id._serialized);
-    }
-});
+// client.on('message_ack', (msg, ack) => {
+//     if (ack >= MessageAck.ACK_SERVER) {
+//         ack_messages.add(msg.id._serialized);
+//     }
+// });
 
 client.initialize();
 
