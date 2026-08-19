@@ -25,6 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let whatsappState = 'starting';
 let whatsappQr = null;
+let ack_messages = [];
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -67,6 +68,12 @@ client.on('auth_failure', (message) => {
 client.on('disconnected', (reason) => {
     whatsappState = 'disconnected';
     console.log('WhatsApp disconnected:', reason);
+});
+
+client.on('message_ack', (msg, ack) => {
+    if (ack >= MessageAck.ACK_SERVER) {
+        ack_messages.push(msg);
+    }
 });
 
 client.initialize();
@@ -315,49 +322,45 @@ function parseUploadedFile(buffer, originalName) {
  * ACK_SERVER means whatsapp-web.js received the server acknowledgement.
  * It does NOT mean the recipient has read the message.
  */
-function waitForServerAck(message, timeoutMs = 15000) {
-    if (message.ack >= MessageAck.ACK_SERVER) {
-        return Promise.resolve(true);
-    }
+// function waitForServerAck(message, timeoutMs = 15000) {
+//     return new Promise((resolve) => {
+//         let finished = false;
 
-    return new Promise((resolve) => {
-        let finished = false;
+//         const finish = (result) => {
+//             if (finished) {
+//                 return;
+//             }
 
-        const finish = (result) => {
-            if (finished) {
-                return;
-            }
+//             finished = true;
 
-            finished = true;
+//             clearTimeout(timeout);
+//             client.off('message_ack', onAck);
 
-            clearTimeout(timeout);
-            client.off('message_ack', onAck);
+//             resolve(result);
+//         };
 
-            resolve(result);
-        };
+//         const onAck = (ackMessage, ack) => {
+//             if (
+//                 ackMessage.id &&
+//                 message.id &&
+//                 ackMessage.id._serialized === message.id._serialized &&
+//                 ack >= MessageAck.ACK_SERVER
+//             ) {
+//                 finish(true);
+//             }
 
-        const onAck = (ackMessage, ack) => {
-            if (
-                ackMessage.id &&
-                message.id &&
-                ackMessage.id._serialized === message.id._serialized &&
-                ack >= MessageAck.ACK_SERVER
-            ) {
-                finish(true);
-            }
+//             if (ack === MessageAck.ACK_ERROR) {
+//                 finish(false);
+//             }
+//         };
 
-            if (ack === MessageAck.ACK_ERROR) {
-                finish(false);
-            }
-        };
+//         const timeout = setTimeout(() => {
+//             finish(false);
+//         }, timeoutMs);
 
-        const timeout = setTimeout(() => {
-            finish(false);
-        }, timeoutMs);
-
-        client.on('message_ack', onAck);
-    });
-}
+//         client.on('message_ack', onAck);
+//     });
+// }
 
 /*
  * Small delay between messages.
@@ -397,20 +400,20 @@ app.get('/api/status', (req, res) => {
 /*
  * Get last opened file path.
  */
-app.get('/api/path', (req, res) => {
-    fs.readFile(path.join(__dirname, '/data/lastOpenedFile.txt'), { encoding: 'utf8' }, (err, data) => {
-        if (!err) {
-            res.json({
-                path: data
-            });
-        } else {
-            console.log(`Error getting last opened file path: ${err}`)
-            res.json({
-                path: ""
-            });
-        }
-    });
-});
+// app.get('/api/path', (req, res) => {
+//     fs.readFile(path.join(__dirname, '/data/lastOpenedFile.txt'), { encoding: 'utf8' }, (err, data) => {
+//         if (!err) {
+//             res.json({
+//                 path: data
+//             });
+//         } else {
+//             console.log(`Error getting last opened file path: ${err}`)
+//             res.json({
+//                 path: ""
+//             });
+//         }
+//     });
+// });
 
 /*
  * Parse an uploaded file.
@@ -424,15 +427,15 @@ const upload = multer({
     }
 });
 
-app.post('/api/savePath', (req, res) => {
-    try {
-        fs.writeFile(path.join(__dirname, '/data/lastOpenedFile.txt'), `${req.body.path}`, { flag: 'w+' }, (err) => {
-        if (err) throw err;
-        });
-    } catch (error) {
-        console.log(`Error saving opened file path: ${error}`)
-    }
-});
+// app.post('/api/savePath', (req, res) => {
+//     try {
+//         fs.writeFile(path.join(__dirname, '/data/lastOpenedFile.txt'), `${req.body.path}`, { flag: 'w+' }, (err) => {
+//         if (err) throw err;
+//         });
+//     } catch (error) {
+//         console.log(`Error saving opened file path: ${error}`)
+//     }
+// });
 
 app.post('/api/parse', upload.single('file'), (req, res) => {
     try {
@@ -524,8 +527,7 @@ app.post('/api/send', async (req, res) => {
 
     const outputRows = rows.map(row => ({
         ...row,
-        finalMessage: "",
-        wasSent: 0
+        finalMessage: ""
     }));
 
     const results = [];
@@ -608,11 +610,20 @@ app.post('/api/send', async (req, res) => {
                 );
 
                 /*
-                 * Wait for ACK_SERVER.
+                 * Check for ACK_SERVER.
                  */
-                const acknowledged = await waitForServerAck(
-                    sentMessage
-                );
+                let attempts = 0;
+                let acknowledged = false;
+
+                const interval = setInterval(() => {
+                    attempts++;
+
+                    acknowledged = ack_messages.includes(sentMessage);
+
+                    if (acknowledged || attempts >= 10) {
+                        clearInterval(interval);
+                    }
+                }, 1000);
 
                 if (acknowledged) {
                     outputRows[index].wasSent = 1;
@@ -622,6 +633,8 @@ app.post('/api/send', async (req, res) => {
                         status: 'sent'
                     });
                 } else {
+                    outputRows[index].wasSent = 0;
+
                     results.push({
                         index,
                         status: 'failed',
